@@ -67,4 +67,27 @@ struct StorageManager {
         
     }
     
+    public func getProfileImage(userEmail: String ,completion: @escaping (URL)-> Void){
+        
+        let safeEmail = userEmail.replacingOccurrences(of: ".", with: "_")
+
+
+        let ref = storage.child("users").child("\(safeEmail).profilePicture")
+        
+        ref.downloadURL { url, error in
+            
+            guard let url = url else {return}
+            
+            if error == nil{
+                
+                completion(url)
+            }else{
+                print("could not download image url")
+            }
+            
+        }
+        
+    }
+    
+    
 }

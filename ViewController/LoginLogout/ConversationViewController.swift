@@ -22,7 +22,7 @@ class ConversationViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         
-       
+       listenForConvos()
        
         
     }
@@ -43,13 +43,15 @@ class ConversationViewController: UIViewController {
     
     //MARK: - Components
     
+    private var conversations : [ConversationModel] = []
+    
     private let spinner = JGProgressHUD(style: .dark)
     
     private let tableView : UITableView = {
         
         let view = UITableView()
         
-        view.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        view.register(ConversationTableViewCell.self, forCellReuseIdentifier: ConversationTableViewCell.identifier)
         
         return view
     }()
@@ -88,6 +90,28 @@ class ConversationViewController: UIViewController {
         
     }
     
+    private func listenForConvos(){
+        
+        guard let safeEmail = UserDefaults.standard.string(forKey: "userEmail") else {return}
+        
+        
+        DatabaseManager.shared.getAllConvos(with:safeEmail) { [weak self] result in
+            switch result{
+                
+            case .success(let conversations):
+                self?.conversations = conversations
+                
+                DispatchQueue.main.async {
+                    self?.tableView.reloadData()
+                }
+                
+            case .failure(let error):
+                print(error.localizedDescription)
+            }
+        }
+        
+    }
+    
     private func fetchConvoData(){
         
         tableView.isHidden = false
@@ -97,12 +121,37 @@ class ConversationViewController: UIViewController {
     @objc func didTapNewConversation(){
         
         let vc = NewConversationViewController()
-        
         let nav = UINavigationController(rootViewController: vc)
+        
+        vc.completion = { [weak self] result in
+            guard let safeName = result["userFirstName"], let safeEmail = result["userEmail"] else {return}
+        
             
+            
+            self?.createNewConvo(userName:safeName , userEmail:safeEmail )
+        }
+        
         present(nav, animated: true, completion: nil)
         
+    
+       
         }
+    
+    private func createNewConvo(userName: String, userEmail: String){
+        
+    
+        let vc = ChatViewController(chattingWithEmail: userEmail, chattingWithName: userName, convoID: nil)
+        
+        vc.title = userName
+        vc.navigationItem.largeTitleDisplayMode = .never
+    
+        
+        navigationController?.pushViewController(vc, animated: true)
+        
+            
+        
+        
+    }
 }
 
 
@@ -112,15 +161,17 @@ class ConversationViewController: UIViewController {
 extension ConversationViewController : UITableViewDelegate, UITableViewDataSource{
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 10
+        return conversations.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: ConversationTableViewCell.identifier, for: indexPath) as? ConversationTableViewCell else{return UITableViewCell()}
         
-        cell.accessoryType = .disclosureIndicator
-        cell.textLabel?.text = "Steven"
+        let model = conversations[indexPath.row]
+       
+        
+        cell.configureCell(model: model)
         
         return cell
     }
@@ -129,12 +180,20 @@ extension ConversationViewController : UITableViewDelegate, UITableViewDataSourc
         
         tableView.deselectRow(at: indexPath, animated: true)
         
-        let vc = ChatViewController()
+        let results = conversations[indexPath.row]
+        
+        let vc = ChatViewController(chattingWithEmail: results.chattingWithEmail, chattingWithName: results.chattingWithName, convoID: results.convoID)
+
+        vc.title = results.chattingWithName
+        vc.navigationItem.largeTitleDisplayMode = .never
+    
         
         navigationController?.pushViewController(vc, animated: true)
         
-        
+
     }
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 100    }
     
     
 }

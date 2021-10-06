@@ -11,8 +11,9 @@ class NewConversationViewController: UIViewController {
     
     //MARK: - Properties
     
-    private var allUsers : [String] = []
-    private var results : [String] = []
+    private var allUsers : [[String:String]] = []
+    private var results : [[String:String]] = []
+    public var completion : (([String:String])->Void)?
     
     private let searchBar : UISearchBar = {
         let searchBar = UISearchBar()
@@ -94,7 +95,9 @@ class NewConversationViewController: UIViewController {
         
         self.results.removeAll()
 
-        let results =  self.allUsers.filter({$0.lowercased().hasPrefix(query)})
+        let results =  self.allUsers.filter({guard let name = $0["userFirstName"]else{return false}
+            
+            return name.lowercased().hasPrefix(query)})
             
         self.results = results
         
@@ -128,7 +131,6 @@ class NewConversationViewController: UIViewController {
 }
 
 //MARK: - Extension
-
 extension NewConversationViewController : UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
   
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -139,13 +141,20 @@ extension NewConversationViewController : UISearchBarDelegate, UITableViewDelega
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         
-        cell.textLabel?.text = results[indexPath.row]
+        cell.textLabel?.text = results[indexPath.row]["userFirstName"]
         
         return cell
     }
     
-    func tableView(_ tableView: UITableView, didDeselectRowAt indexPath: IndexPath) {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        
+        let result = results[indexPath.row]
+        self.dismiss(animated: true) {
+            
+            self.completion?(result)
+
+        }
     }
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {

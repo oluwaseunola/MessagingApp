@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SDWebImage
 
 class ProfileViewController: UIViewController {
   
@@ -26,13 +27,7 @@ class ProfileViewController: UIViewController {
         
         tableView?.tableHeaderView = profileHeaderView()
     }
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        
-        tableView?.tableHeaderView = profileHeaderView()
 
-    }
     
     private func profileHeaderView()-> UIView?{
         
@@ -47,10 +42,9 @@ class ProfileViewController: UIViewController {
         profileImageView.layer.cornerRadius = 50
         profileImageView.layer.borderWidth = 3
         
-        StorageManager.shared.getUserPicturData(email: email) { data in
-            
-            profileImageView.image = UIImage(data: data)
-            
+
+        StorageManager.shared.getProfileImage(userEmail:email) { url in
+            profileImageView.sd_setImage(with: url, completed: nil)
         }
         
         headerView.frame = CGRect(x: 0, y: 0, width: self.view.width, height: 250)
