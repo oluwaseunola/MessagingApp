@@ -37,7 +37,7 @@ class ChatViewController: MessagesViewController {
     private var convoID : String?
     
 
-    private var isNewConvo : Bool = true
+    private var isNewConvo = true
     
     init(chattingWithEmail: String, chattingWithName: String, convoID: String?) {
         self.chattingWithEmail = chattingWithEmail
@@ -70,6 +70,12 @@ class ChatViewController: MessagesViewController {
         messageInputBar.delegate = self
         
       
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        if !self.messages.isEmpty{
+            isNewConvo = false
+        }
     }
     
     
@@ -113,16 +119,21 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
     func inputBar(_ inputBar: InputBarAccessoryView, didPressSendButtonWith text: String) {
         
         guard !text.replacingOccurrences(of: " ", with: "").isEmpty, let safeSender = self.sender else{return}
-         
+        
+        let message = Message(sender: safeSender , messageId: createMessageID(), sentDate: Date() , kind: .text(text), isRead: false)
+        
+        
+        
+        
         if isNewConvo {
             
             
-            let message = Message(sender: safeSender , messageId: createMessageID(), sentDate: Date() , kind: .text(text), isRead: false)
-            
-            DatabaseManager.shared.createNewConvo(chattingWithEmail: chattingWithEmail, chattingWithName: chattingWithName, firstMessage: message) { success in
+           
+            DatabaseManager.shared.createNewConvo(chattingWithEmail: chattingWithEmail, chattingWithName: chattingWithName, firstMessage: message) { [weak self] success in
                 
                 if success{
-                    print("Successfully added new convo")
+                    print("less goo")
+                    self?.isNewConvo = false
                 } else{
                     
                     print("error creating new convo in firebase")
@@ -131,8 +142,19 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
             }
             
         }else{
+            guard let id = convoID else{return}
             
-//            append
+            DatabaseManager.shared.sendMessageToConvof(with: id, chattingWithEmail: chattingWithEmail, chattingWithName: chattingWithName, message: message) { success in
+                
+                if success{
+                    print("success appending to conversation")
+                }else{
+                    print("error appending to conversation")
+
+                }
+                
+            }
+            
         }
         
     }

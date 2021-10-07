@@ -27,11 +27,14 @@ class ConversationViewController: UIViewController {
         
     }
     
+    
+    
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-      
+     
+        listenForConvos()
         
-
     }
     
     override func viewDidLayoutSubviews() {
@@ -183,9 +186,11 @@ extension ConversationViewController : UITableViewDelegate, UITableViewDataSourc
         let results = conversations[indexPath.row]
         
         let vc = ChatViewController(chattingWithEmail: results.chattingWithEmail, chattingWithName: results.chattingWithName, convoID: results.convoID)
+        print(results.convoID)
 
         vc.title = results.chattingWithName
         vc.navigationItem.largeTitleDisplayMode = .never
+        
     
         
         navigationController?.pushViewController(vc, animated: true)

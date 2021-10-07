@@ -79,9 +79,10 @@ struct DatabaseManager{
         
     }
     //    Create new convo
-    public func createNewConvo(chattingWithEmail: String, chattingWithName: String, firstMessage: Message, completion: @escaping (Bool)-> Void){
+    public func createNewConvo( chattingWithEmail: String, chattingWithName: String, firstMessage: Message, completion: @escaping (Bool)-> Void){
         
         guard let safeCurrentEmail = UserDefaults.standard.string(forKey: "userEmail")?.replacingOccurrences(of: ".", with: "_") else {return}
+        guard let currentName = UserDefaults.standard.string(forKey: "userName") else {return}
         let safeChattingWithEmail = chattingWithEmail.replacingOccurrences(of: ".", with: "_")
         let ref = databse.reference().child("users").child(safeCurrentEmail)
         let ref2 = databse.reference().child("users").child(safeChattingWithEmail)
@@ -142,7 +143,7 @@ struct DatabaseManager{
             
             let recipientConvo : [String:Any] = [
                 
-                "chattingWIthName": "self",
+                "chattingWIthName": currentName,
                 "chattingWithEmail": safeCurrentEmail,
                 "convoID": convoID,
                 "latestMessage": [
@@ -153,9 +154,9 @@ struct DatabaseManager{
             ]
             
             //            do the same for the user we are talking to
-
+            
             ref2.child("conversation").observeSingleEvent(of: .value) { recipientSnapShot in
-    
+                
                 
                 if var conversation = snapshot.value as? [[String:Any]] {
                     
@@ -164,9 +165,10 @@ struct DatabaseManager{
                     ref2.child("conversation").setValue(conversation) { error, _ in
                         
                         if error == nil{
-                          
+                            completion(true)
                             print("successfully added onto existing convo")
                         }else{
+                            completion(false)
                             print("could not add onto existing convo")
                             
                         }
@@ -176,14 +178,21 @@ struct DatabaseManager{
                     
                     
                 }else{
+                    
                     //                create new convo
                     
-                    ref2.child("conversation").setValue(recipientConvo) { error, _ in
+                    let recipientConvoArray = [
+                        recipientConvo
+                    ]
+                    
+                    
+                    ref2.child("conversation").setValue(recipientConvoArray) { error, _ in
                         if error == nil{
-                            
+                            completion(true)
                             print("successfully added conversation to firebase")
-                        
+                            
                         }else{
+                            completion(false)
                             
                             print("there was an error adding your conversation to firebase")
                             
@@ -195,10 +204,11 @@ struct DatabaseManager{
             }
             
             //            current user add convo
-
+            
             
             
             if var conversation = user["conversation"] as? [[String:Any]] {
+                
                 
                 conversation.append(newConvo)
                 user["conversation"] = conversation
@@ -210,6 +220,7 @@ struct DatabaseManager{
                         
                         print("successfully added onto existing convo")
                     }else{
+                        completion(false)
                         print("could not add onto existing convo")
                         
                     }
@@ -241,17 +252,18 @@ struct DatabaseManager{
             
             
             
-                            
-                
-            }
             
             
+        }
+        
+        
         
     }
     
     private func addConvoToMainBranch(conversationID: String, chattingWithName: String, latestMessage:Message, completion: @escaping (Bool)->Void){
         
         guard let currentUserEmail = UserDefaults.standard.string(forKey: "userEmail") else{return}
+        
         
         var messageText = ""
         
@@ -312,9 +324,10 @@ struct DatabaseManager{
         mainRef.setValue(value) { error, _ in
             
             if error == nil{
+                completion(true)
                 print("successfully saved to firebase")
             }else{
-                
+                completion(false)
                 print("error saving your converation to firebase")
             }
             
@@ -363,7 +376,6 @@ struct DatabaseManager{
     public func getAllMessages(with id: String, completion: @escaping ([Message])-> Void){
         
         let ref = databse.reference().child(id).child("messages")
-        
         ref.observe(.value) { snapshot in
             
             guard let snapshotValue = snapshot.value as? [[String:Any]] else {return}
@@ -387,6 +399,7 @@ struct DatabaseManager{
                 return messageModel
             })
             
+            
             completion(messages)
             
             
@@ -394,9 +407,196 @@ struct DatabaseManager{
         
         
         
+        
+        
     }
     
-    public func sendMessageToConvof(with conversation: String, message: Message, completion: @escaping (Bool)-> Void){
+    public func sendMessageToConvof(with conversationID: String, chattingWithEmail: String,chattingWithName: String, message: Message, completion: @escaping (Bool)-> Void){
+        
+        let ref = databse.reference().child(conversationID).child("messages")
+        
+        var messageText = ""
+        
+        switch message.kind {
+            
+        case .text(let text):
+            messageText = text
+        case .attributedText(_):
+            break
+        case .photo(_):
+            break
+            
+        case .video(_):
+            break
+            
+        case .location(_):
+            break
+            
+        case .emoji(_):
+            break
+            
+        case .audio(_):
+            break
+            
+        case .contact(_):
+            break
+            
+        case .linkPreview(_):
+            break
+            
+        case .custom(_):
+            break
+            
+        }
+        
+        guard let currentUserEmail = UserDefaults.standard.string(forKey: "userEmail") else{return}
+
+        
+        ref.observeSingleEvent(of: .value) { snapshot in
+            
+            guard var value = snapshot.value as? [[String : Any?]] else{return}
+        
+            
+            
+            let newMessage : [String : Any] = [
+                "id": message.messageId,
+                "type": message.kind.description,
+                "content": messageText,
+                "date": ChatViewController.dateFormatter.string(from: message.sentDate),
+                "senderEmail": currentUserEmail,
+                "chattingWith":chattingWithName,
+                "isRead": false
+                
+                
+                
+            ]
+            
+            value.append(newMessage)
+            
+            ref.setValue(value) { error, _ in
+                
+                if error == nil {
+                    
+                    
+                    
+                    
+                    
+                }else{
+                    
+                    print("error appending messages in database call")
+                    
+                }
+                
+                
+            }
+            
+            
+            
+            
+            
+            
+            
+        }
+        
+        //MARK: - update latest message for current user
+        
+        let safeEmail = currentUserEmail.replacingOccurrences(of: ".", with: "_")
+        
+        self.databse.reference().child("users").child(safeEmail).child("conversation").observeSingleEvent(of: .value) { datasnapshot in
+            
+            
+            guard var conversations = datasnapshot.value as? [[String:Any]] else{
+                print("no convo found")
+                completion(false)
+                return}
+            
+            var position = 0
+            var updatedConversation : [String:Any] = [:]
+            for conversation in conversations{
+                if var updatedConvo = conversation as? [String:Any], updatedConvo["convoID"] as? String == conversationID{
+                    
+                    updatedConvo["latestMessage"] = [
+                        "date": ChatViewController.dateFormatter.string(from: message.sentDate),
+                        "isRead": false,
+                        "message": messageText
+                    ]
+                    
+                    updatedConversation = updatedConvo
+                    
+                    break
+                }
+                position += 1
+                
+                
+            }
+            
+            conversations[position] = updatedConversation
+            
+            self.databse.reference().child("users").child(safeEmail).child("conversation").setValue(conversations) { error, _ in
+                
+                if error == nil{
+                    completion(true)
+                    print("success appending messages in database call and updated latest message")
+                }else{
+                    
+                    completion(false)
+                    print("error appending messages in database call and could not update latest message")
+                }
+            }
+            
+            
+            
+        }
+        
+        //MARK: - update latest message for user we're talking to
+        
+        let safeChattingWithEmail = chattingWithEmail.replacingOccurrences(of: ".", with: "_")
+        
+        self.databse.reference().child("users").child(safeChattingWithEmail).child("conversation").observeSingleEvent(of: .value) { datasnapshot in
+            
+            
+            guard var conversations = datasnapshot.value as? [[String:Any]] else{
+                print("no convo found")
+                completion(false)
+                return}
+            
+            var position = 0
+            var updatedConversation : [String:Any] = [:]
+            for conversation in conversations{
+                if var updatedConvo = conversation as? [String:Any], updatedConvo["convoID"] as? String == conversationID{
+                    
+                    updatedConvo["latestMessage"] = [
+                        "date": ChatViewController.dateFormatter.string(from: message.sentDate),
+                        "isRead": false,
+                        "message": messageText
+                    ]
+                    
+                    updatedConversation = updatedConvo
+                    
+                    break
+                }
+                position += 1
+                
+                
+            }
+            
+            conversations[position] = updatedConversation
+            
+            self.databse.reference().child("users").child(safeChattingWithEmail).child("conversation").setValue(conversations) { error, _ in
+                
+                if error == nil{
+                    completion(true)
+                    print("success appending messages to chattingWith in database call and updated latest message")
+                }else{
+                    
+                    completion(false)
+                    print("error appending messages in database call and could not update latest message")
+                }
+            }
+            
+            
+            
+        }
         
         
     }

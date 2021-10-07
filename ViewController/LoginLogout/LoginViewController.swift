@@ -189,6 +189,7 @@ class LoginViewController: UIViewController {
                 
                 UserDefaults.standard.set(email, forKey: "userEmail")
                 
+                
                 DispatchQueue.main.async {
                     self?.dismiss(animated: true, completion: nil)
                     self?.spinner.dismiss(animated: true)
@@ -267,6 +268,7 @@ class LoginViewController: UIViewController {
                     if error == nil {
                         DispatchQueue.main.async {
                             UserDefaults.standard.set(email, forKey: "userEmail")
+                            UserDefaults.standard.set("\(firstName) \(lastName)", forKey: "userName")
 
                             self?.dismiss(animated: true, completion: nil)
                             
@@ -391,6 +393,7 @@ extension LoginViewController : UITextFieldDelegate, LoginButtonDelegate{
                         return
                     }
                     UserDefaults.standard.set(email, forKey: "userEmail")
+                    UserDefaults.standard.set("\(firstName) \(lastName)", forKey: "userName")
 
                     self?.dismiss(animated: true)
                 }
