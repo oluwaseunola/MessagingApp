@@ -7,6 +7,7 @@
 
 import Foundation
 import FirebaseDatabase
+import MessageKit
 
 struct DatabaseManager{
     
@@ -380,6 +381,8 @@ struct DatabaseManager{
             
             guard let snapshotValue = snapshot.value as? [[String:Any]] else {return}
             
+            let kindValue : MessageKind = .text("Placeholder")
+            
             let messages : [Message] = snapshotValue.compactMap({ dictionary in
                 
                 guard let chattingWith = dictionary["chattingWith"] as? String,
@@ -388,13 +391,18 @@ struct DatabaseManager{
                       let messageID = dictionary["id"] as? String ,
                       let isRead = dictionary["isRead"] as? Bool ,
                       let senderEmail = dictionary["senderEmail"] as? String ,
-                      let type = dictionary["type"]as? String,
+                      let type = dictionary["type"] as? String,
                       let formattedDate = ChatViewController.dateFormatter.date(from: date) else {return nil}
                 
                 
+//                switch on the type, assign it to kind value and  return it.
+               
+                guard let messageKind = switchOnType(placeHolder: kindValue, messageKind: type, content: content) else {return nil}
+             
+                
                 let senderObject = Sender(senderId: senderEmail, displayName: chattingWith, photoURL: "")
                 
-                let messageModel = Message(sender: senderObject, messageId: messageID, sentDate: formattedDate, kind: .text(content), isRead: isRead)
+                let messageModel = Message(sender: senderObject, messageId: messageID, sentDate: formattedDate, kind: messageKind, isRead: isRead)
                 
                 return messageModel
             })
@@ -423,8 +431,10 @@ struct DatabaseManager{
             messageText = text
         case .attributedText(_):
             break
-        case .photo(_):
-            break
+        case .photo(let mediaItem):
+            guard let urlString = mediaItem.url?.absoluteString else {return}
+           
+            messageText = urlString
             
         case .video(_):
             break
@@ -602,6 +612,50 @@ struct DatabaseManager{
     }
     
     
+    private func switchOnType(placeHolder: MessageKind, messageKind: String, content: String ) -> MessageKind?{
+        
+        switch messageKind{
+            
+        case "text":
+            var holder = placeHolder
+            
+            holder = MessageKind.text(content)
+        
+            return holder
+        case "attributedText":
+            break
+            
+        case "photo":
+            
+            guard let url = URL(string: content) else {return nil}
+            guard let placeHolderImage = UIImage(systemName: "photo")?.withBackground(color: .white) else{return nil}
+            
+            let mediaObject = Media(url: url, image: nil, placeholderImage: placeHolderImage, size: CGSize(width: 200, height: 200))
+            
+            return MessageKind.photo(mediaObject)
+        case "video":
+
+            break
+        case "location":
+
+            break
+        case "emoji":
+
+            break
+        case "audio":
+        
+            break
+        case "contact":
+            break
+        case "linkPreview":
+            break
+        case "custom":
+            break
+        default:
+            break
+        }
+        return nil
+    }
     
     
 }

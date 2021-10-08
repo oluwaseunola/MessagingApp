@@ -68,7 +68,7 @@ class ConversationTableViewCell: UITableViewCell {
         
         userNameLabel.frame = CGRect(x: profile.right + 15, y: profile.top, width: contentView.width - 10 - profile.width, height: 20)
         
-        messageLabel.frame = CGRect(x: profile.right + 15, y: userNameLabel.bottom + 5, width: contentView.width - 10 - profile.width, height: contentView.height - 50 - 30)
+        messageLabel.frame = CGRect(x: profile.right + 15, y: userNameLabel.bottom + 5, width: contentView.width - 35 - profile.width, height: contentView.height - 50 - 30)
         
         
     }

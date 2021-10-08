@@ -30,7 +30,7 @@ struct StorageManager {
             if error == nil{
                 completion(true)
             }else{completion(false)
-                print(error?.localizedDescription)
+                print(error!.localizedDescription)
             }
             
         }
@@ -58,7 +58,7 @@ struct StorageManager {
             if error == nil{
                 completion(data)
             }else{
-                print(error?.localizedDescription)
+                print(error!.localizedDescription)
             }
             
             
@@ -86,6 +86,44 @@ struct StorageManager {
             }
             
         }
+        
+    }
+    
+    
+    public func uploadImageMessage(email: String, photo: Data, fileName: String, completion: @escaping (Result<URL,Error>)->Void ){
+        
+        let safeEmail = email.replacingOccurrences(of: ".", with: "_")
+        
+        let ref = storage.child("users").child("\(safeEmail)").child("imageMessages").child(fileName)
+        
+        ref.putData(photo, metadata: nil) { _ , error in
+            if error == nil{
+                
+                storage.child("users").child("\(safeEmail)").child("imageMessages").child(fileName).downloadURL { url, urlDownloadError in
+                    guard let url = url else {
+                        return
+                    }
+                    
+                    if urlDownloadError == nil{
+                        
+                        completion(.success(url))
+                    }else{
+                        completion(.failure(urlDownloadError!))
+                    }
+                    
+            
+                }
+            }else{
+                print(error!.localizedDescription)
+            }
+    
+           
+            
+            
+        }
+        
+        
+        
         
     }
     
