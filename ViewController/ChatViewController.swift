@@ -10,6 +10,7 @@ import MessageKit
 import InputBarAccessoryView
 import SDWebImage
 
+
 class ChatViewController: MessagesViewController, MessageCellDelegate {
     
     
@@ -143,10 +144,31 @@ class ChatViewController: MessagesViewController, MessageCellDelegate {
             self?.present(self!.imagePicker, animated: true, completion: nil)
         }
         
+        let takeVideo = UIAlertAction(title: "Take video", style: .default) { [weak self] _ in
+            self?.imagePicker.sourceType = .camera
+            self?.imagePicker.mediaTypes = ["public.movie"]
+            self?.imagePicker.videoQuality = .typeMedium
+            self?.imagePicker.showsCameraControls = true
+            
+            self?.present(self!.imagePicker, animated: true, completion: nil)
+        }
+        
+        let selectVideo = UIAlertAction(title: "Choose video", style: .default) { [weak self] _ in
+            self?.imagePicker.sourceType = .photoLibrary
+            self?.imagePicker.mediaTypes = ["public.movie"]
+            self?.imagePicker.videoQuality = .typeMedium
+            self?.imagePicker.showsCameraControls = true
+            self?.present(self!.imagePicker, animated: true, completion: nil)
+        }
+        
+        
         let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         
         actionSheet.addAction(takePhoto)
+        actionSheet.addAction(takeVideo)
         actionSheet.addAction(chooseFromLibrary)
+        actionSheet.addAction(selectVideo)
+
         actionSheet.addAction(cancel)
         
         present(actionSheet, animated: true, completion: nil)
@@ -243,8 +265,14 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
             }
             
             
-        case .video(_):
-            break
+        case .video(let media):
+            
+            guard let url = media.url else{return}
+            
+            let vc = VideoViewerViewController(url: url)
+            
+            present(vc, animated: true, completion: nil)
+            
         case .location(_):
             break
         case .emoji(_):
@@ -279,6 +307,7 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
         
     }
     
+   
     
     func didTapImage(in cell: MessageCollectionViewCell) {
        
@@ -337,10 +366,8 @@ extension ChatViewController : UIImagePickerControllerDelegate & UINavigationCon
        
         dismiss(animated: true, completion: nil)
 
-        guard let image = info[.editedImage] as? UIImage else {print("no image")
-            return}
-        guard let imageData = image.pngData()else {print("no data")
-            return}
+        
+        
         guard let userEmail = UserDefaults.standard.string(forKey: "userEmail") else {print("no email")
             return}
         guard let convoID = convoID else {print("no id")
@@ -350,46 +377,91 @@ extension ChatViewController : UIImagePickerControllerDelegate & UINavigationCon
         guard let placeHolder = UIImage(systemName: "photo") else {print("no holder")
             return}
         
-        
-    
-        
         let fileName = "imageMessage_\(createMessageID())"
+
         
-        
-        
-        
-        StorageManager.shared.uploadImageMessage(email: userEmail, photo: imageData, fileName: fileName ) {[weak self] result in
+        if let image = info[.editedImage] as? UIImage {
             
+            guard let imageData = image.pngData()else {print("no data")
+                return}
+
             
-            switch result{
-                
-            case .success(let url):
+            StorageManager.shared.uploadImageMessage(email: userEmail, photo: imageData, fileName: fileName ) {[weak self] result in
                 
                 
-                
-                let mediaObject = Media(url: url, image: image, placeholderImage: placeHolder, size: .zero)
-                
-                let message = Message(sender: sender , messageId: convoID, sentDate: Date(), kind: .photo(mediaObject), isRead: false)
-                
-                
-                DatabaseManager.shared.sendMessageToConvof(with: convoID, chattingWithEmail: self?.chattingWithEmail ?? "", chattingWithName: self?.chattingWithName ?? "", message: message) { success in
+                switch result{
                     
-                    if success{
-                        print("uploaded image message")
-                    }else{
-                        print("error uploading image message")
+                case .success(let url):
+                    
+                    
+                    
+                    let mediaObject = Media(url: url, image: image, placeholderImage: placeHolder, size: .zero)
+                    
+                    let message = Message(sender: sender , messageId: convoID, sentDate: Date(), kind: .photo(mediaObject), isRead: false)
+                    
+                    
+                    DatabaseManager.shared.sendMessageToConvof(with: convoID, chattingWithEmail: self?.chattingWithEmail ?? "", chattingWithName: self?.chattingWithName ?? "", message: message) { success in
+                        
+                        if success{
+                            print("uploaded image message")
+                        }else{
+                            print("error uploading image message")
+                        }
+                        
                     }
+                    
+
+                case.failure(let error):
+                    
+                    print(error.localizedDescription)
                     
                 }
                 
-
-            case.failure(let error):
+            }
+            
+            
+            
+        }else if let video = info[.mediaURL] as? URL{
+    
+            
+            StorageManager.shared.uploadMediaURLMessage(email: userEmail, media: video, fileName: fileName ) {[weak self] result in
                 
-                print(error.localizedDescription)
+                
+                switch result{
+                    
+                case .success(let url):
+                    
+                    
+                    
+                    let mediaObject = Media(url: url, image: nil, placeholderImage: placeHolder, size: .zero)
+                    
+                    let message = Message(sender: sender , messageId: convoID, sentDate: Date(), kind: .video(mediaObject), isRead: false)
+                    
+                    
+                    DatabaseManager.shared.sendMessageToConvof(with: convoID, chattingWithEmail: self?.chattingWithEmail ?? "", chattingWithName: self?.chattingWithName ?? "", message: message) { success in
+                        
+                        if success{
+                            print("uploaded video message")
+                        }else{
+                            print("error uploading video message")
+                        }
+                        
+                    }
+                    
+
+                case.failure(let error):
+                    
+                    print(error.localizedDescription)
+                    
+                }
                 
             }
             
+            
         }
+    
+        
+
         
         
 

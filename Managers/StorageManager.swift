@@ -127,5 +127,42 @@ struct StorageManager {
         
     }
     
+    public func uploadMediaURLMessage(email: String, media: URL, fileName: String, completion: @escaping (Result<URL,Error>)->Void ){
+        
+        let safeEmail = email.replacingOccurrences(of: ".", with: "_")
+        
+        let ref = storage.child("users").child("\(safeEmail)").child("videoMessages").child(fileName)
+        
+        ref.putFile(from: media, metadata: nil) { _ , error in
+            if error == nil{
+                
+                storage.child("users").child("\(safeEmail)").child("videoMessages").child(fileName).downloadURL { url, urlDownloadError in
+                    guard let url = url else {
+                        return
+                    }
+                    
+                    if urlDownloadError == nil{
+                        
+                        completion(.success(url))
+                    }else{
+                        completion(.failure(urlDownloadError!))
+                    }
+                    
+            
+                }
+            }else{
+                print(error!.localizedDescription)
+            }
+    
+           
+            
+            
+        }
+        
+        
+        
+        
+    }
+    
     
 }

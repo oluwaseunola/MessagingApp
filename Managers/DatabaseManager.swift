@@ -436,8 +436,10 @@ struct DatabaseManager{
            
             messageText = urlString
             
-        case .video(_):
-            break
+        case .video(let video):
+            guard let videoURL = video.url else{return}
+            
+            messageText = videoURL.absoluteString
             
         case .location(_):
             break
@@ -635,7 +637,12 @@ struct DatabaseManager{
             return MessageKind.photo(mediaObject)
         case "video":
 
-            break
+            guard let url = URL(string: content) else {return nil}
+            guard let placeHolderImage = UIImage(systemName: "video")?.withBackground(color: .white) else{return nil}
+            
+            let mediaObject = Media(url: url, image: nil, placeholderImage: placeHolderImage, size: CGSize(width: 200, height: 200))
+            
+            return MessageKind.photo(mediaObject)
         case "location":
 
             break
