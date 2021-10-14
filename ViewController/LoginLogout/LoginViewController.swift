@@ -23,7 +23,9 @@ class LoginViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        view.backgroundColor = .white
+        
+        
+        view.backgroundColor = .systemBackground
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Register", style: .done, target: self, action: #selector(didTapRegister))
         
@@ -60,14 +62,14 @@ class LoginViewController: UIViewController {
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        let size = view.width/3
+        let size = view.width/2
         let size2 = (view.width)*(4/5)
         
-        imageView.frame = CGRect(x: (view.width - size)/2, y: size + 20, width: size, height: size)
+        imageView.frame = CGRect(x: (view.width - size)/2, y: 50, width: size, height: size)
         
         scrollView.frame = view.bounds
         
-        emailField.frame = CGRect(x: (view.width - size2)/2, y: imageView.bottom + 100, width: size2 , height: 52)
+        emailField.frame = CGRect(x: (view.width - size2)/2, y: imageView.bottom + 60, width: size2 , height: 52)
         
         passwordField.frame = CGRect(x: (view.width - size2)/2, y: emailField.bottom + 10, width: size2 , height: 52)
         
@@ -93,6 +95,7 @@ class LoginViewController: UIViewController {
     let spinner = JGProgressHUD(style: .dark)
     let facebookButton = FBLoginButton()
     let googleButton = GIDSignInButton()
+    
     
     private let scrollView : UIScrollView = {
         let view = UIScrollView()
@@ -124,7 +127,7 @@ class LoginViewController: UIViewController {
         
         field.placeholder = "Email"
         field.textAlignment = .center
-        
+        field.textColor = .label
         field.autocapitalizationType = .none
         field.autocorrectionType = .no
         field.returnKeyType = .continue
@@ -140,6 +143,7 @@ class LoginViewController: UIViewController {
         let field = UITextField()
         
         field.placeholder = "Password"
+        field.textColor = .label
         field.isSecureTextEntry = true
         field.textAlignment = .center
         field.autocapitalizationType = .none
@@ -189,6 +193,7 @@ class LoginViewController: UIViewController {
                 
                 UserDefaults.standard.set(email, forKey: "userEmail")
                 
+
                 
                 DispatchQueue.main.async {
                     self?.dismiss(animated: true, completion: nil)
@@ -197,6 +202,7 @@ class LoginViewController: UIViewController {
             } else {
                 
                 if let unwrappedError = result.0 {
+                    
                     let alert = UIAlertController(title: "Login Error", message: "\( unwrappedError.localizedDescription)", preferredStyle: .alert)
                     
                     let dismiss = UIAlertAction(title: "Dismiss", style: .default, handler: nil)
@@ -221,6 +227,10 @@ class LoginViewController: UIViewController {
         
         
     }
+    
+    
+    
+    
     
     
     //MARK: - Google Login
@@ -257,6 +267,7 @@ class LoginViewController: UIViewController {
             
             DatabaseManager.shared.validateNewUser(email: email) { exists in
                 
+                print(" does this exist?: \(exists)")
                 if !exists{
                     DatabaseManager.shared.saveUser(user: UserModel(firstName: firstName, lastName: lastName, email: email))
                     
@@ -269,6 +280,8 @@ class LoginViewController: UIViewController {
                         DispatchQueue.main.async {
                             UserDefaults.standard.set(email, forKey: "userEmail")
                             UserDefaults.standard.set("\(firstName) \(lastName)", forKey: "userName")
+                            
+
 
                             self?.dismiss(animated: true, completion: nil)
                             
@@ -331,7 +344,7 @@ class LoginViewController: UIViewController {
         navigationController?.pushViewController( vc, animated: true)
         
     }
-    
+
     
     
     
@@ -394,6 +407,8 @@ extension LoginViewController : UITextFieldDelegate, LoginButtonDelegate{
                     }
                     UserDefaults.standard.set(email, forKey: "userEmail")
                     UserDefaults.standard.set("\(firstName) \(lastName)", forKey: "userName")
+                    
+
 
                     self?.dismiss(animated: true)
                 }

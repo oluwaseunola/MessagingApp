@@ -125,16 +125,41 @@ class ConversationViewController: UIViewController {
         
         let vc = NewConversationViewController()
         let nav = UINavigationController(rootViewController: vc)
+        present(nav, animated: true, completion: nil)
+
         
         vc.completion = { [weak self] result in
-            guard let safeName = result["userFirstName"], let safeEmail = result["userEmail"] else {return}
+            
+            guard let safeName = result["userFirstName"] as? String, let safeEmail = result["userEmail"] as? String else {return}
         
+            if let targetConvo = self?.conversations.first(where: {$0.chattingWithEmail == safeEmail.replacingOccurrences(of: ".", with: "_")}){
+                
+                self?.openExistingConvo(userName: safeName, userEmail: safeEmail, id: targetConvo.convoID)
+                
+            }else{
+                
+                DatabaseManager.shared.conversationExists(chattingWithEmail: safeEmail) { result in
+                    
+                    switch result{
+                        
+                    case .success(let id):
+                        self?.openExistingConvo(userName: safeName, userEmail: safeEmail, id: id)
+                        
+                    case .failure(_):
+                        
+                        self?.createNewConvo(userName:safeName , userEmail:safeEmail )
+                        
+                    }
+                    
+                    
+                    
+                }
+
+            }
             
-            
-            self?.createNewConvo(userName:safeName , userEmail:safeEmail )
+
         }
         
-        present(nav, animated: true, completion: nil)
         
     
        
@@ -144,6 +169,23 @@ class ConversationViewController: UIViewController {
         
     
         let vc = ChatViewController(chattingWithEmail: userEmail, chattingWithName: userName, convoID: nil)
+        
+        vc.title = userName
+        vc.navigationItem.largeTitleDisplayMode = .never
+    
+        
+        navigationController?.pushViewController(vc, animated: true)
+        
+            
+        
+        
+    }
+    
+    private func openExistingConvo(userName: String, userEmail: String, id: String){
+        
+    
+        let vc = ChatViewController(chattingWithEmail: userEmail, chattingWithName: userName, convoID: id)
+        
         
         vc.title = userName
         vc.navigationItem.largeTitleDisplayMode = .never
@@ -199,6 +241,39 @@ extension ConversationViewController : UITableViewDelegate, UITableViewDataSourc
     }
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 100    }
+    
+    
+    func tableView(_ tableView: UITableView, editingStyleForRowAt indexPath: IndexPath) -> UITableViewCell.EditingStyle {
+        return .delete
+    }
+    
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+
+        let deletedConvoID = conversations[indexPath.row].convoID
+
+        if editingStyle == .delete{
+
+            tableView.beginUpdates()
+
+
+            DatabaseManager.shared.deleteConversation(id: deletedConvoID) { [weak self] success in
+                if success {
+                    self?.conversations.remove(at: indexPath.row)
+                    self?.tableView.deleteRows(at: [indexPath], with: .left)
+
+                    print("deleted")
+                }else{
+                    print("error deleting")
+
+                }
+            }
+
+            tableView.endUpdates()
+        }
+
+
+
+    }
     
     
 }

@@ -9,6 +9,7 @@ import UIKit
 import MessageKit
 import InputBarAccessoryView
 import SDWebImage
+import CoreLocation
 
 
 class ChatViewController: MessagesViewController, MessageCellDelegate {
@@ -35,6 +36,7 @@ class ChatViewController: MessagesViewController, MessageCellDelegate {
         return Sender(senderId: safeEmail, displayName: "me", photoURL: "")
         
     }
+    
     private var mediaURL : URL?
     public var chattingWithEmail: String
     public var chattingWithName : String
@@ -42,7 +44,8 @@ class ChatViewController: MessagesViewController, MessageCellDelegate {
     private let imagePicker = UIImagePickerController()
     
     
-    private var isNewConvo = true
+    
+    public var isNewConvo = true
     
     init(chattingWithEmail: String, chattingWithName: String, convoID: String?) {
         self.chattingWithEmail = chattingWithEmail
@@ -116,15 +119,55 @@ class ChatViewController: MessagesViewController, MessageCellDelegate {
     private func configureButtons(){
         let selectImageButton = InputBarButtonItem()
         selectImageButton.setImage(UIImage(systemName: "photo"), for: .normal)
+        let locationButton = InputBarButtonItem()
+        locationButton.setImage(UIImage(systemName: "location.fill"), for: .normal)
+        locationButton.onTouchUpInside { [weak self] _ in
+            
+            self?.presentLocationActionSheet()
+            
+        }
         selectImageButton.onTouchUpInside { [weak self] _ in
             
             self?.presentPhotoActionSheet()
         }
         messageInputBar.setLeftStackViewWidthConstant(to: 36, animated: true)
-        messageInputBar.setStackViewItems([selectImageButton], forStack: .left, animated: true)
+        messageInputBar.leftStackView.axis = .vertical
+        messageInputBar.leftStackView.spacing = 5
+        messageInputBar.setStackViewItems([selectImageButton, locationButton], forStack: .left, animated: true)
         
         
     }
+    
+    private func presentLocationActionSheet(){
+        
+        let actionSheet = UIAlertController(title: "Send a location", message: nil, preferredStyle: .actionSheet)
+        
+        let send = UIAlertAction(title: "Send location", style: .default) { [weak self] _ in
+            
+            let vc = LocationPicker()
+            let nav = UINavigationController(rootViewController: vc)
+            vc.navigationItem.largeTitleDisplayMode = .never
+
+            self?.present(nav, animated: true, completion: nil)
+                
+                vc.completion = { location in
+                    
+                    
+                    self?.sendLocationMessage(location: location)
+                
+            }
+            
+        }
+        
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        
+        actionSheet.addAction(send)
+        actionSheet.addAction(cancel)
+        
+        present(actionSheet, animated: true, completion: nil)
+        
+    }
+
     
     private func presentPhotoActionSheet(){
         
@@ -208,6 +251,7 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
         
         
         
+
         if isNewConvo {
             
             
@@ -217,6 +261,7 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
                 if success{
                     print("less goo")
                     self?.isNewConvo = false
+                    
                 } else{
                     
                     print("error creating new convo in firebase")
@@ -225,8 +270,10 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
             }
             
         }else{
+
             guard let id = convoID else{return}
-            
+           
+
             DatabaseManager.shared.sendMessageToConvof(with: id, chattingWithEmail: chattingWithEmail, chattingWithName: chattingWithName, message: message) { success in
                 
                 if success{
@@ -294,6 +341,56 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
         
         
     }
+    
+    private func sendLocationMessage(location: CLLocationCoordinate2D){
+        
+        guard let safeSender = sender else{return}
+        
+        let finalLocation = CLLocation(latitude: location.latitude, longitude: location.longitude)
+        
+        let locationItem = Location(location: finalLocation, size: CGSize(width: 200, height: 200))
+        
+        let message = Message(sender: safeSender , messageId: createMessageID(), sentDate: Date() , kind: .location(locationItem), isRead: false)
+        
+    
+        
+        if isNewConvo {
+            
+            
+            
+            DatabaseManager.shared.createNewConvo(chattingWithEmail: chattingWithEmail, chattingWithName: chattingWithName, firstMessage: message) { [weak self] success in
+                
+                if success{
+                    print("less goo")
+                    self?.isNewConvo = false
+                    
+                } else{
+                    
+                    print("error creating new convo in firebase")
+                }
+                
+            }
+            
+        }else{
+
+            guard let id = convoID else{return}
+           
+
+            DatabaseManager.shared.sendMessageToConvof(with: id, chattingWithEmail: chattingWithEmail, chattingWithName: chattingWithName, message: message) { success in
+                
+                if success{
+                    print("success appending to conversation")
+                }else{
+                    print("error appending to conversation")
+                    
+                }
+                
+            }
+            
+        }
+        
+    }
+    
     
     private func createMessageID()-> String{
         

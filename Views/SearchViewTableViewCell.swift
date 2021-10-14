@@ -69,8 +69,8 @@ class SearchViewTableViewCell: UITableViewCell {
         
     }
     
-    public func configureCell(model: [String:String]){
-        guard let firstName = model["userFirstName"], let lastName = model["userLastName"], let email = model["userEmail"] else {return}
+    public func configureCell(model: [String:Any]){
+        guard let firstName = model["userFirstName"] as? String, let lastName = model["userLastName"] as? String, let email = model["userEmail"] as? String else {return}
         
         let safeEmail = email.replacingOccurrences(of: ".", with: "_")
         

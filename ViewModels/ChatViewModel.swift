@@ -7,6 +7,7 @@
 
 import Foundation
 import MessageKit
+import CoreLocation
 
 struct Message : MessageType {
     
@@ -88,4 +89,10 @@ struct Media : MediaItem {
     
     
     
+}
+
+struct Location: LocationItem{
+    
+    var location : CLLocation
+    var size : CGSize
 }

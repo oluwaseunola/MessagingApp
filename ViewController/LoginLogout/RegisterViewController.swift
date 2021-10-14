@@ -18,7 +18,7 @@ class RegisterViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        view.backgroundColor = .white
+        view.backgroundColor = .systemBackground
         
       
         
@@ -148,7 +148,7 @@ class RegisterViewController: UIViewController {
         let button = UIButton()
         
         button.setTitle("Create Account", for: .normal)
-        button.setTitleColor(.white, for: .normal)
+        button.setTitleColor(.label, for: .normal)
         button.layer.cornerRadius = 12
         button.layer.borderWidth = 1
         button.layer.borderColor = UIColor.darkGray.cgColor

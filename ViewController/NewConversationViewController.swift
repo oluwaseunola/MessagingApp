@@ -11,9 +11,9 @@ class NewConversationViewController: UIViewController {
     
     //MARK: - Properties
     
-    private var allUsers : [[String:String]] = []
-    private var results : [[String:String]] = []
-    public var completion : (([String:String])->Void)?
+    private var allUsers : [[String:Any]] = []
+    private var results : [[String:Any]] = []
+    public var completion : (([String:Any])->Void)?
     
     private let searchBar : UISearchBar = {
         let searchBar = UISearchBar()
@@ -101,7 +101,7 @@ class NewConversationViewController: UIViewController {
         
         self.results.removeAll()
         
-        let results =  self.allUsers.filter({guard let name = $0["userFirstName"]else{return false}
+        let results =  self.allUsers.filter({guard let name = $0["userFirstName"] as? String else{return false}
             
             return name.lowercased().hasPrefix(query)})
         

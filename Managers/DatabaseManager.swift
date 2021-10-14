@@ -8,6 +8,7 @@
 import Foundation
 import FirebaseDatabase
 import MessageKit
+import CoreLocation
 
 struct DatabaseManager{
     
@@ -22,10 +23,11 @@ struct DatabaseManager{
     func validateNewUser(email: String, completion: @escaping (Bool)-> Void){
         
         let safeEmail = email.replacingOccurrences(of: ".", with: "_")
+        print("this is your safe email \(safeEmail)")
         
         databse.reference().child("users").child(safeEmail).observeSingleEvent(of: .value) { snapshot in
             
-            guard let _ = snapshot.value as? String else{
+            guard let _ = snapshot.value as? [String:Any] else{
                 
                 completion(false)
                 return
@@ -48,7 +50,7 @@ struct DatabaseManager{
     }
     
     
-    func fetchAllUsers(completion: @escaping ([[String:String]])->Void){
+    func fetchAllUsers(completion: @escaping ([[String:Any]])->Void){
         
         let ref = databse.reference().child("users")
         
@@ -58,11 +60,11 @@ struct DatabaseManager{
             if error == nil{
                 
                 guard let users = snapshot.value as? NSDictionary else{return}
-                
                 let userList = users.compactMap({$0.value as? NSDictionary})
+                print(userList)
                 
                 
-                let userData = userList.compactMap({$0 as? [String: String]})
+                let userData = userList.compactMap({$0 as? [String: Any]})
                 
                 completion(userData)
                 
@@ -104,8 +106,9 @@ struct DatabaseManager{
         case .video(_):
             break
             
-        case .location(_):
-            break
+        case .location(let location):
+        
+            messageText = "\(location.location.coordinate.longitude),\( location.location.coordinate.latitude)"
             
         case .emoji(_):
             break
@@ -395,10 +398,10 @@ struct DatabaseManager{
                       let formattedDate = ChatViewController.dateFormatter.date(from: date) else {return nil}
                 
                 
-//                switch on the type, assign it to kind value and  return it.
-               
+                //                switch on the type, assign it to kind value and  return it.
+                
                 guard let messageKind = switchOnType(placeHolder: kindValue, messageKind: type, content: content) else {return nil}
-             
+                
                 
                 let senderObject = Sender(senderId: senderEmail, displayName: chattingWith, photoURL: "")
                 
@@ -433,7 +436,7 @@ struct DatabaseManager{
             break
         case .photo(let mediaItem):
             guard let urlString = mediaItem.url?.absoluteString else {return}
-           
+            
             messageText = urlString
             
         case .video(let video):
@@ -441,8 +444,9 @@ struct DatabaseManager{
             
             messageText = videoURL.absoluteString
             
-        case .location(_):
-            break
+        case .location(let location):
+            
+            messageText = "\(location.location.coordinate.longitude),\( location.location.coordinate.latitude)"
             
         case .emoji(_):
             break
@@ -461,13 +465,16 @@ struct DatabaseManager{
             
         }
         
-        guard let currentUserEmail = UserDefaults.standard.string(forKey: "userEmail") else{return}
 
+        guard let currentUserEmail = UserDefaults.standard.string(forKey: "userEmail") else{return}
+        
+       
+        
         
         ref.observeSingleEvent(of: .value) { snapshot in
             
             guard var value = snapshot.value as? [[String : Any?]] else{return}
-        
+            
             
             
             let newMessage : [String : Any] = [
@@ -489,9 +496,7 @@ struct DatabaseManager{
                 
                 if error == nil {
                     
-                    
-                    
-                    
+            
                     
                 }else{
                     
@@ -503,48 +508,68 @@ struct DatabaseManager{
             }
             
             
-            
-            
-            
-            
-            
         }
         
         //MARK: - update latest message for current user
         
         let safeEmail = currentUserEmail.replacingOccurrences(of: ".", with: "_")
+        let ref2 =  self.databse.reference().child("users").child(safeEmail).child("conversation")
         
-        self.databse.reference().child("users").child(safeEmail).child("conversation").observeSingleEvent(of: .value) { datasnapshot in
+        var finalConversation : [[String:Any]] = []
+        
+        
+        ref2.observeSingleEvent(of: .value) { datasnapshot in
             
+
             
-            guard var conversations = datasnapshot.value as? [[String:Any]] else{
-                print("no convo found")
-                completion(false)
-                return}
-            
-            var position = 0
-            var updatedConversation : [String:Any] = [:]
-            for conversation in conversations{
-                if var updatedConvo = conversation as? [String:Any], updatedConvo["convoID"] as? String == conversationID{
+            if var conversations = datasnapshot.value as? [[String:Any]] {
+                
+                let updatedValue : [String : Any] = [
+                    "date": ChatViewController.dateFormatter.string(from: message.sentDate),
+                    "isRead": false,
+                    "message": messageText
+                ]
+                var position = 0
+                var updatedConversation : [String:Any] = [:]
+                for conversation in conversations{
                     
-                    updatedConvo["latestMessage"] = [
+                    if conversation["convoID"] as? String == conversationID{
+                        
+                        updatedConversation = conversation
+                        
+                        updatedConversation["latestMessage"] = [
+                            "date": ChatViewController.dateFormatter.string(from: message.sentDate),
+                            "isRead": false,
+                            "message": messageText
+                        ]
+                        break
+                    }
+                    position += 1
+                    
+                }
+                
+                conversations[position] = updatedConversation
+                finalConversation = conversations
+        
+                
+            }else{
+                
+                let newConvo : [String:Any] = [
+                    
+                    "chattingWIthName": chattingWithName,
+                    "chattingWithEmail": chattingWithEmail,
+                    "convoID": conversationID,
+                    "latestMessage": [
                         "date": ChatViewController.dateFormatter.string(from: message.sentDate),
                         "isRead": false,
                         "message": messageText
                     ]
-                    
-                    updatedConversation = updatedConvo
-                    
-                    break
-                }
-                position += 1
+                ]
                 
-                
+                finalConversation = [newConvo]
             }
             
-            conversations[position] = updatedConversation
-            
-            self.databse.reference().child("users").child(safeEmail).child("conversation").setValue(conversations) { error, _ in
+            self.databse.reference().child("users").child(safeEmail).child("conversation").setValue(finalConversation) { error, _ in
                 
                 if error == nil{
                     completion(true)
@@ -555,9 +580,6 @@ struct DatabaseManager{
                     print("error appending messages in database call and could not update latest message")
                 }
             }
-            
-            
-            
         }
         
         //MARK: - update latest message for user we're talking to
@@ -566,35 +588,58 @@ struct DatabaseManager{
         
         self.databse.reference().child("users").child(safeChattingWithEmail).child("conversation").observeSingleEvent(of: .value) { datasnapshot in
             
+            var finalRecipientConversation : [[String:Any]] = []
             
-            guard var conversations = datasnapshot.value as? [[String:Any]] else{
-                print("no convo found")
-                completion(false)
-                return}
             
-            var position = 0
-            var updatedConversation : [String:Any] = [:]
-            for conversation in conversations{
-                if var updatedConvo = conversation as? [String:Any], updatedConvo["convoID"] as? String == conversationID{
+            if var conversations = datasnapshot.value as? [[String:Any]] {
+                
+                var position = 0
+                var updatedConversation : [String:Any] = [:]
+                for conversation in conversations{
                     
-                    updatedConvo["latestMessage"] = [
+                    if var updatedConvo = conversation as? [String:Any], updatedConvo["convoID"] as? String == conversationID{
+                        
+                        updatedConvo["latestMessage"] = [
+                            "date": ChatViewController.dateFormatter.string(from: message.sentDate),
+                            "isRead": false,
+                            "message": messageText
+                        ]
+                        
+                        updatedConversation = updatedConvo
+                        
+                        break
+                    }
+                    position += 1
+                    
+                    
+                }
+                
+                conversations[position] = updatedConversation
+                finalRecipientConversation = conversations
+                
+            }else{
+                
+                let newRecipientConvo : [String:Any] = [
+                    
+                    "chattingWIthName": chattingWithName,
+                    "chattingWithEmail": safeEmail,
+                    "convoID": conversationID,
+                    "latestMessage": [
                         "date": ChatViewController.dateFormatter.string(from: message.sentDate),
                         "isRead": false,
                         "message": messageText
                     ]
-                    
-                    updatedConversation = updatedConvo
-                    
-                    break
-                }
-                position += 1
+                ]
                 
+                finalRecipientConversation = [newRecipientConvo]
                 
             }
             
-            conversations[position] = updatedConversation
             
-            self.databse.reference().child("users").child(safeChattingWithEmail).child("conversation").setValue(conversations) { error, _ in
+            
+            
+            
+            self.databse.reference().child("users").child(safeChattingWithEmail).child("conversation").setValue(finalRecipientConversation) { error, _ in
                 
                 if error == nil{
                     completion(true)
@@ -622,7 +667,7 @@ struct DatabaseManager{
             var holder = placeHolder
             
             holder = MessageKind.text(content)
-        
+            
             return holder
         case "attributedText":
             break
@@ -636,7 +681,7 @@ struct DatabaseManager{
             
             return MessageKind.photo(mediaObject)
         case "video":
-
+            
             guard let url = URL(string: content) else {return nil}
             guard let placeHolderImage = UIImage(systemName: "video")?.withBackground(color: .white) else{return nil}
             
@@ -644,13 +689,22 @@ struct DatabaseManager{
             
             return MessageKind.photo(mediaObject)
         case "location":
-
-            break
+            
+            let components = content.components(separatedBy: ",")
+            
+            guard let longitude = Double(components[0]), let latitude = Double(components [1]) else {
+                print("no longitude")
+                return nil}
+        
+            let locationObject = Location(location: CLLocation(latitude:latitude , longitude: longitude) , size: CGSize(width: 200, height: 200))
+            
+            return MessageKind.location(locationObject)
+        
         case "emoji":
-
+            
             break
         case "audio":
-        
+            
             break
         case "contact":
             break
@@ -664,5 +718,95 @@ struct DatabaseManager{
         return nil
     }
     
+    public func deleteConversation(id: String, completion: @escaping (Bool)->Void){
+        
+        guard let userEmail = UserDefaults.standard.string(forKey: "userEmail")?.replacingOccurrences(of: ".", with: "_") else{return}
+        
+        let ref =  databse.reference().child("users").child(userEmail).child("conversation")
+        
+        ref.observeSingleEvent(of: .value) { snapshot in
+            
+            guard var value = snapshot.value as? [[String : Any]] else {return}
+            
+            
+            
+            var indexPath = 0
+            
+            for conversation in value {
+                
+                if let convoID = conversation["convoID"] as? String, convoID == id {
+                    break
+                    
+                }
+                
+                indexPath += 1
+                
+            }
+            
+            value.remove(at: indexPath)
+            
+            
+            
+            ref.setValue(value) { error, _ in
+                if error == nil{
+                    completion(true)
+                    print("successfully deleted convo")
+                    
+                }
+                else{
+                    completion(false)
+                    print("could not delete convo")
+                    
+                }
+            }
+            
+        }
+        
+        
+    }
+    
+    
+    public func conversationExists(chattingWithEmail: String, completion: @escaping (Result<String, Error>)-> Void){
+        
+        guard let email = UserDefaults.standard.string(forKey: "userEmail")?.replacingOccurrences(of: ".", with: "_") else{return}
+        let safeChattingWithEmail = chattingWithEmail.replacingOccurrences(of: ".", with: "_")
+        
+        databse.reference().child("users").child(safeChattingWithEmail).child("conversation").observeSingleEvent(of: .value) { snapshot in
+            
+            if let conversations = snapshot.value as? [[String:Any]] {
+                
+                var convoID = ""
+                
+                for conversation in conversations {
+                    
+                    if conversation["chattingWithEmail"]as? String == email, let recoveredConvoID = conversation["convoID"] as? String {
+                        convoID = recoveredConvoID
+                        print("this is your convo ID \(convoID)")
+                        completion(.success(convoID))
+                        
+                    }
+                    else{
+                        completion(.failure(DatabaseError.failedToFetch))}
+                    return
+                    
+                }
+                
+                
+            }
+            
+            completion(.failure(DatabaseError.failedToFetch))
+            
+        }
+        
+        
+    }
     
 }
+
+struct DatabaseError{
+    
+    static let failedToFetch = NSError(domain: "", code: 401, userInfo: [ NSLocalizedDescriptionKey: "could not fetch"])
+    
+}
+
+
