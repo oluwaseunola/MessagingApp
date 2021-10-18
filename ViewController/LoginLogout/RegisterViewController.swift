@@ -208,43 +208,69 @@ class RegisterViewController: UIViewController {
                 alert.addAction(dismiss)
                 
                 self?.present(alert, animated: true, completion: nil)
-            }
-            
-            
-        }
-        
-//        Create new user for authentication if they do not already exist
-        
-        AuthManager.shared.createUser(email: email, password: password) { [weak self] result in
-            
-            print("Created user: \(result.user)")
-            
-            DispatchQueue.main.async {
-                self?.spinner.dismiss(animated: true)
-                self?.dismiss(animated: true, completion: nil)
+                
+            }else{
 
-            }
-        }
-    
-//        This saves the user to our database
-        
-        DatabaseManager.shared.saveUser(user: UserModel(firstName: name, lastName: last , email: email))
-    
-        
-            
-        guard let photoData = profileImage.image?.pngData() else{return}
-            
-//            This uploads our new user's profile picture to firebase storage
-            
-            StorageManager.shared.uploadProfile(email: email, photo: photoData) { success in
-                if success{
-                    print("profile picture successfully uploaded")
-                }else{
+//                Create new user for authentication if they do not already exist
+                        
+                        AuthManager.shared.createUser(email: email, password: password) { [weak self] success in
+                            
+                            if success{
+                                //        This saves the user to our database
+                                        
+                                        DatabaseManager.shared.saveUser(user: UserModel(firstName: name, lastName: last , email: email))
+                                
+                                guard let photoData = self?.profileImage.image?.pngData() else{return}
+                                            
+                                //            This uploads our new user's profile picture to firebase storage
+                                            
+                                            StorageManager.shared.uploadProfile(email: email, photo: photoData) { success in
+                                                if success{
+                                                    print("profile picture successfully uploaded")
+                                                }else{
+                                                    
+                                                    print("Error uploading profile picture")
+                                                }
+                                            
+                                        }
+                                
+                                AuthManager.shared.signIn(email: email, password: password) { result in
+                                    if result.0 == nil{
+                                        
+                                        UserDefaults.standard.set(email, forKey: "userEmail")
+                                        
+                                        NotificationCenter.default.post(name: NSNotification.Name("registeredNewUser"), object: nil)
+                                        
+                                        DispatchQueue.main.async {
+                                            self?.spinner.dismiss(animated: true)
+                                            self?.navigationController?.dismiss(animated: true, completion: nil)
+                                        }
+                                    }else{
+                                        print(result.0?.localizedDescription)
+                                    }
+                                   
+                                    
+                                }
+                                
+                               
+                            }else{
+                                
+                                print("could not create user")
+                            }
+                        
+                  
+                        
+                            
+                                
                     
-                    print("Error uploading profile picture")
                 }
+                
+                
+            }
             
-        }
+                            }
+                            
+
         
         
     }

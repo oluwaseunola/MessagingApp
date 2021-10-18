@@ -22,14 +22,14 @@ class ProfileTableViewCell: UITableViewCell {
         switch model.kind{
             
         case .logout:
-            self.textLabel?.text = model.title
-            self.textLabel?.textAlignment = .center
-            self.textLabel?.textColor = .red
+            textLabel?.text = model.title
+            textLabel?.textAlignment = .center
+            textLabel?.textColor = .red
         case .info:
             guard let email = UserDefaults.standard.string(forKey: "userEmail") else{return}
             
-            self.textLabel?.text = email
-            self.textLabel?.textAlignment = .center
+            textLabel?.text = email
+            textLabel?.textAlignment = .center
         }
         
     }

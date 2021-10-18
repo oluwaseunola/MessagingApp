@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>Path</key>
+	<string>$(SRCROOT)/$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Library access needed to send photo &amp; video messages</string>
 	<key>NSMicrophoneUsageDescription</key>

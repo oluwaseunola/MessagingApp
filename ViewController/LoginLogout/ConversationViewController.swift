@@ -15,6 +15,7 @@ class ConversationViewController: UIViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "plus.message.fill"), style: UIBarButtonItem.Style.plain, target: self, action: #selector(didTapNewConversation))
         
         view.addSubview(tableView)
+        view.addSubview(label)
 
         validation()
         fetchConvoData()
@@ -22,25 +23,30 @@ class ConversationViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         
+
        listenForConvos()
+
+    
+      
        
         
     }
     
     
-    
-    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-     
-        listenForConvos()
+       
         
+        listenForConvos()
+
     }
+    
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
         tableView.frame = view.bounds
+        label.frame = CGRect(x: (view.width - 300)/2, y: (view.height - 52)/2, width: 300, height: 52)
         
     }
     
@@ -62,10 +68,10 @@ class ConversationViewController: UIViewController {
     private let label : UILabel = {
         let label = UILabel()
         
-        label.font = UIFont.systemFont(ofSize: 100, weight: .bold)
+        label.font = UIFont.systemFont(ofSize: 30, weight: .bold)
         label.textAlignment = .center
         label.textColor = .label
-        
+        label.text = "No Conversations"
         return label
     }()
     
@@ -93,23 +99,32 @@ class ConversationViewController: UIViewController {
         
     }
     
+   
+    
     private func listenForConvos(){
         
         guard let safeEmail = UserDefaults.standard.string(forKey: "userEmail") else {return}
         
-        
+                
         DatabaseManager.shared.getAllConvos(with:safeEmail) { [weak self] result in
             switch result{
                 
             case .success(let conversations):
                 self?.conversations = conversations
+                self?.tableView.isHidden = false
+                self?.label.isHidden = true
                 
                 DispatchQueue.main.async {
                     self?.tableView.reloadData()
                 }
                 
+
             case .failure(let error):
                 print(error.localizedDescription)
+                
+                self?.tableView.isHidden = true
+                self?.label.isHidden = false
+                
             }
         }
         
@@ -190,8 +205,10 @@ class ConversationViewController: UIViewController {
         vc.title = userName
         vc.navigationItem.largeTitleDisplayMode = .never
     
-        
-        navigationController?.pushViewController(vc, animated: true)
+        DispatchQueue.main.async { [weak self ] in
+            self?.navigationController?.pushViewController(vc, animated: true)
+
+        }
         
             
         
@@ -253,23 +270,26 @@ extension ConversationViewController : UITableViewDelegate, UITableViewDataSourc
 
         if editingStyle == .delete{
 
-            tableView.beginUpdates()
-
+            conversations.remove(at: indexPath.row)
+            tableView.deleteRows(at: [indexPath], with: .left)
+            
 
             DatabaseManager.shared.deleteConversation(id: deletedConvoID) { [weak self] success in
                 if success {
-                    self?.conversations.remove(at: indexPath.row)
-                    self?.tableView.deleteRows(at: [indexPath], with: .left)
-
                     print("deleted")
+
                 }else{
                     print("error deleting")
 
                 }
             }
-
-            tableView.endUpdates()
+            
         }
+        
+        
+      
+        
+        
 
 
 

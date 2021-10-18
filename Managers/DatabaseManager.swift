@@ -10,7 +10,7 @@ import FirebaseDatabase
 import MessageKit
 import CoreLocation
 
-struct DatabaseManager{
+class DatabaseManager{
     
     static let shared = DatabaseManager()
     
@@ -20,6 +20,8 @@ struct DatabaseManager{
     
     let databse = Database.database()
     
+    /// Checks if new user already exists in the system
+
     func validateNewUser(email: String, completion: @escaping (Bool)-> Void){
         
         let safeEmail = email.replacingOccurrences(of: ".", with: "_")
@@ -39,17 +41,18 @@ struct DatabaseManager{
         
     }
     
+    /// Saves new user model to database
+
     func saveUser(user: UserModel){
         
         let safeEmail = user.email.replacingOccurrences(of: ".", with: "_")
         
         databse.reference().child("users").child(safeEmail).setValue(["userFirstName": user.firstName, "userLastName": user.lastName, "userEmail": user.email])
         
-        
-        
     }
     
-    
+    /// Returns a list of users
+
     func fetchAllUsers(completion: @escaping ([[String:Any]])->Void){
         
         let ref = databse.reference().child("users")
@@ -81,7 +84,10 @@ struct DatabaseManager{
         }
         
     }
-    //    Create new convo
+    
+    /// Creates a new conversation
+
+    
     public func createNewConvo( chattingWithEmail: String, chattingWithName: String, firstMessage: Message, completion: @escaping (Bool)-> Void){
         
         guard let safeCurrentEmail = UserDefaults.standard.string(forKey: "userEmail")?.replacingOccurrences(of: ".", with: "_") else {return}
@@ -107,7 +113,7 @@ struct DatabaseManager{
             break
             
         case .location(let location):
-        
+            
             messageText = "\(location.location.coordinate.longitude),\( location.location.coordinate.latitude)"
             
         case .emoji(_):
@@ -157,7 +163,7 @@ struct DatabaseManager{
                 ]
             ]
             
-            //            do the same for the user we are talking to
+            //            Creates new, or adds onto convo for person we are chatting with
             
             ref2.child("conversation").observeSingleEvent(of: .value) { recipientSnapShot in
                 
@@ -217,10 +223,10 @@ struct DatabaseManager{
                 conversation.append(newConvo)
                 user["conversation"] = conversation
                 
-                ref.setValue(user) { error, _ in
+                ref.setValue(user) { [weak self] error, _ in
                     
                     if error == nil{
-                        self.addConvoToMainBranch(conversationID: convoID, chattingWithName: chattingWithName, latestMessage: firstMessage, completion: completion)
+                        self?.addConvoToMainBranch(conversationID: convoID, chattingWithName: chattingWithName, latestMessage: firstMessage, completion: completion)
                         
                         print("successfully added onto existing convo")
                     }else{
@@ -240,12 +246,12 @@ struct DatabaseManager{
                     newConvo
                 ]
                 
-                ref.setValue(user) { error, _ in
+                ref.setValue(user) { [weak self] error, _ in
                     if error == nil{
                         
                         print("successfully added conversation to firebase")
                         
-                        self.addConvoToMainBranch(conversationID: convoID, chattingWithName: chattingWithName, latestMessage: firstMessage, completion: completion)
+                        self?.addConvoToMainBranch(conversationID: convoID, chattingWithName: chattingWithName, latestMessage: firstMessage, completion: completion)
                     }else{
                         
                         print("there was an error adding your conversation to firebase")
@@ -253,16 +259,16 @@ struct DatabaseManager{
                     }
                 }
             }
-            
-            
-            
-            
+           
             
         }
         
         
         
     }
+    
+    /// Adds conversation onto the main branch of our database to make access to messages, via a conversation ID, much easier.
+
     
     private func addConvoToMainBranch(conversationID: String, chattingWithName: String, latestMessage:Message, completion: @escaping (Bool)->Void){
         
@@ -343,16 +349,20 @@ struct DatabaseManager{
         
     }
     
+    /// Fetches all conversations for our current user to display
+
     
     public func getAllConvos(with: String, completion: @escaping (Result<[ConversationModel], Error>)-> Void){
         
         guard let currentEmail = UserDefaults.standard.string(forKey: "userEmail")?.replacingOccurrences(of: ".", with: "_") else {return}
         
+        
         let ref = databse.reference().child("users").child(currentEmail).child("conversation")
         
         ref.observe(.value) { snapshot in
             
-            guard let snapshotData = snapshot.value as? [[String:Any]] else{return}
+            guard let snapshotData = snapshot.value as? [[String:Any]] else{completion(.failure(DatabaseError.failedToFetch))
+                return}
             
             let conversation : [ConversationModel] = snapshotData.compactMap({ dictionary in
                 
@@ -372,21 +382,20 @@ struct DatabaseManager{
         }
         
         
-        
-        
-        
     }
+    
+    /// Fetches all messages via a conversation ID and returns an array of messages for the user to display.
     
     public func getAllMessages(with id: String, completion: @escaping ([Message])-> Void){
         
         let ref = databse.reference().child(id).child("messages")
-        ref.observe(.value) { snapshot in
+        ref.observe(.value) {  snapshot in
             
             guard let snapshotValue = snapshot.value as? [[String:Any]] else {return}
             
             let kindValue : MessageKind = .text("Placeholder")
             
-            let messages : [Message] = snapshotValue.compactMap({ dictionary in
+            let messages : [Message] = snapshotValue.compactMap({ [weak self] dictionary in
                 
                 guard let chattingWith = dictionary["chattingWith"] as? String,
                       let content = dictionary["content"] as? String,
@@ -400,7 +409,7 @@ struct DatabaseManager{
                 
                 //                switch on the type, assign it to kind value and  return it.
                 
-                guard let messageKind = switchOnType(placeHolder: kindValue, messageKind: type, content: content) else {return nil}
+                guard let messageKind = self?.switchOnType(placeHolder: kindValue, messageKind: type, content: content) else {return nil}
                 
                 
                 let senderObject = Sender(senderId: senderEmail, displayName: chattingWith, photoURL: "")
@@ -421,7 +430,8 @@ struct DatabaseManager{
         
         
     }
-    
+    /// Update latest message on firebase for current user and person we are chatting with
+
     public func sendMessageToConvof(with conversationID: String, chattingWithEmail: String,chattingWithName: String, message: Message, completion: @escaping (Bool)-> Void){
         
         let ref = databse.reference().child(conversationID).child("messages")
@@ -465,10 +475,10 @@ struct DatabaseManager{
             
         }
         
-
+        
         guard let currentUserEmail = UserDefaults.standard.string(forKey: "userEmail") else{return}
         
-       
+        
         
         
         ref.observeSingleEvent(of: .value) { snapshot in
@@ -496,7 +506,7 @@ struct DatabaseManager{
                 
                 if error == nil {
                     
-            
+                    
                     
                 }else{
                     
@@ -518,9 +528,9 @@ struct DatabaseManager{
         var finalConversation : [[String:Any]] = []
         
         
-        ref2.observeSingleEvent(of: .value) { datasnapshot in
+        ref2.observeSingleEvent(of: .value) { [weak self] datasnapshot in
             
-
+            
             
             if var conversations = datasnapshot.value as? [[String:Any]] {
                 
@@ -530,27 +540,44 @@ struct DatabaseManager{
                     "message": messageText
                 ]
                 var position = 0
-                var updatedConversation : [String:Any] = [:]
+                var updatedConversation : [String:Any]?
                 for conversation in conversations{
                     
                     if conversation["convoID"] as? String == conversationID{
                         
                         updatedConversation = conversation
+                        updatedConversation?["latestMessage"] = updatedValue
                         
-                        updatedConversation["latestMessage"] = [
-                            "date": ChatViewController.dateFormatter.string(from: message.sentDate),
-                            "isRead": false,
-                            "message": messageText
-                        ]
                         break
                     }
                     position += 1
                     
                 }
                 
-                conversations[position] = updatedConversation
-                finalConversation = conversations
-        
+                if let updatedConvo = updatedConversation {
+                    
+                    conversations[position] = updatedConvo
+                    finalConversation = conversations
+                    
+                }else{
+                    
+                    let newConvo : [String:Any] = [
+                        
+                        "chattingWIthName": chattingWithName,
+                        "chattingWithEmail": chattingWithEmail,
+                        "convoID": conversationID,
+                        "latestMessage": [
+                            "date": ChatViewController.dateFormatter.string(from: message.sentDate),
+                            "isRead": false,
+                            "message": messageText
+                        ]
+                    ]
+                    
+                    conversations.append(newConvo)
+                    finalConversation = conversations
+                }
+                
+                
                 
             }else{
                 
@@ -569,7 +596,7 @@ struct DatabaseManager{
                 finalConversation = [newConvo]
             }
             
-            self.databse.reference().child("users").child(safeEmail).child("conversation").setValue(finalConversation) { error, _ in
+            self?.databse.reference().child("users").child(safeEmail).child("conversation").setValue(finalConversation) { error, _ in
                 
                 if error == nil{
                     completion(true)
@@ -586,7 +613,7 @@ struct DatabaseManager{
         
         let safeChattingWithEmail = chattingWithEmail.replacingOccurrences(of: ".", with: "_")
         
-        self.databse.reference().child("users").child(safeChattingWithEmail).child("conversation").observeSingleEvent(of: .value) { datasnapshot in
+        self.databse.reference().child("users").child(safeChattingWithEmail).child("conversation").observeSingleEvent(of: .value) { [weak self] datasnapshot in
             
             var finalRecipientConversation : [[String:Any]] = []
             
@@ -639,7 +666,7 @@ struct DatabaseManager{
             
             
             
-            self.databse.reference().child("users").child(safeChattingWithEmail).child("conversation").setValue(finalRecipientConversation) { error, _ in
+            self?.databse.reference().child("users").child(safeChattingWithEmail).child("conversation").setValue(finalRecipientConversation) { error, _ in
                 
                 if error == nil{
                     completion(true)
@@ -658,6 +685,8 @@ struct DatabaseManager{
         
     }
     
+    /// Switches on the type description of a message and returns message kind
+
     
     private func switchOnType(placeHolder: MessageKind, messageKind: String, content: String ) -> MessageKind?{
         
@@ -695,11 +724,11 @@ struct DatabaseManager{
             guard let longitude = Double(components[0]), let latitude = Double(components [1]) else {
                 print("no longitude")
                 return nil}
-        
+            
             let locationObject = Location(location: CLLocation(latitude:latitude , longitude: longitude) , size: CGSize(width: 200, height: 200))
             
             return MessageKind.location(locationObject)
-        
+            
         case "emoji":
             
             break
@@ -717,7 +746,7 @@ struct DatabaseManager{
         }
         return nil
     }
-    
+    /// Deletes convos from firebase
     public func deleteConversation(id: String, completion: @escaping (Bool)->Void){
         
         guard let userEmail = UserDefaults.standard.string(forKey: "userEmail")?.replacingOccurrences(of: ".", with: "_") else{return}
@@ -765,6 +794,8 @@ struct DatabaseManager{
         
     }
     
+    /// checks if a conversation already exits before creating a brand new one incase it was deleted.
+
     
     public func conversationExists(chattingWithEmail: String, completion: @escaping (Result<String, Error>)-> Void){
         
@@ -801,6 +832,7 @@ struct DatabaseManager{
         
     }
     
+    
 }
 
 struct DatabaseError{
@@ -808,5 +840,7 @@ struct DatabaseError{
     static let failedToFetch = NSError(domain: "", code: 401, userInfo: [ NSLocalizedDescriptionKey: "could not fetch"])
     
 }
+
+
 
 

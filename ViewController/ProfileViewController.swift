@@ -15,8 +15,6 @@ class ProfileViewController: UIViewController {
     @IBOutlet var tableView : UITableView?
 
     
-    
-    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -26,12 +24,28 @@ class ProfileViewController: UIViewController {
         tableView?.tableHeaderView = profileHeaderView()
         view.backgroundColor = .systemBackground
         configureTableView()
+        listenForLogin()
 
     }
     
     private let label = UILabel()
     private let profileImageView = UIImageView()
     private var data : [LoginTableViewRows] = [LoginTableViewRows]()
+    
+    
+    private func listenForLogin(){
+        
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("isLoggedIn"), object: nil, queue: .main) { [weak self] _ in
+           
+            self?.fetchImage()
+
+            
+        }
+        
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("registeredNewUser"), object: nil, queue: .main) {[weak self] _ in
+            self?.fetchImage()
+        }
+    }
 
     private func profileHeaderView()-> UIView?{
         
@@ -95,6 +109,17 @@ class ProfileViewController: UIViewController {
         data.append(LoginTableViewRows(title: "Email", kind: .info, completion: nil))
     }
     
+    private func fetchImage(){
+        
+        guard let email = UserDefaults.standard.string(forKey: "userEmail") else{return}
+        
+        tableView?.reloadData()
+        
+        StorageManager.shared.getProfileImage(userEmail:email) {[weak self] url in
+            
+            self?.profileImageView.sd_setImage(with: url, completed: nil)
+        }
+    }
     
     
     

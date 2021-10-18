@@ -18,7 +18,7 @@ struct StorageManager {
     private init() {
         
     }
-    
+    /// upload profile picture to firebase
     public func uploadProfile(email: String, photo: Data, completion: @escaping (Bool)->Void ){
         
         let safeEmail = email.replacingOccurrences(of: ".", with: "_")
@@ -39,34 +39,9 @@ struct StorageManager {
         
         
     }
-    
-    
-    func getUserPicturData(email: String, completion: @escaping (Data)-> Void){
-        
-        let safeEmail = email.replacingOccurrences(of: ".", with: "_")
 
-        
-        
-        let ref = storage.child("users").child("\(safeEmail).profilePicture")
-        
-        ref.getData(maxSize: 1 * 1024 * 1024) { data, error in
-            
-            guard let data = data else {
-                return
-            }
+    /// download profile picture from firebase
 
-            if error == nil{
-                completion(data)
-            }else{
-                print(error!.localizedDescription)
-            }
-            
-            
-            
-        }
-        
-    }
-    
     public func getProfileImage(userEmail: String ,completion: @escaping (URL)-> Void){
         
         let safeEmail = userEmail.replacingOccurrences(of: ".", with: "_")
@@ -89,7 +64,8 @@ struct StorageManager {
         
     }
     
-    
+    /// upload image message to firebase
+
     public func uploadImageMessage(email: String, photo: Data, fileName: String, completion: @escaping (Result<URL,Error>)->Void ){
         
         let safeEmail = email.replacingOccurrences(of: ".", with: "_")
@@ -116,17 +92,14 @@ struct StorageManager {
             }else{
                 print(error!.localizedDescription)
             }
-    
-           
-            
+
             
         }
-        
-        
-        
+
         
     }
-    
+    /// upload media url to firebase
+
     public func uploadMediaURLMessage(email: String, media: URL, fileName: String, completion: @escaping (Result<URL,Error>)->Void ){
         
         let safeEmail = email.replacingOccurrences(of: ".", with: "_")

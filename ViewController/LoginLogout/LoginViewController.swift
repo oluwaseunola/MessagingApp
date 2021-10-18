@@ -170,6 +170,17 @@ class LoginViewController: UIViewController {
     }()
     
     
+    private func isUserLoggedIn(){
+    
+        if Auth.auth().currentUser != nil{
+            NotificationCenter.default.post(name: NSNotification.Name("isLoggedIn"), object: nil)
+            
+        }
+        
+        
+    }
+    
+    
     //MARK: - Regular Login
     
     @objc func didTapLogin(){
@@ -193,7 +204,8 @@ class LoginViewController: UIViewController {
                 
                 UserDefaults.standard.set(email, forKey: "userEmail")
                 
-
+                
+                self?.isUserLoggedIn()
                 
                 DispatchQueue.main.async {
                     self?.dismiss(animated: true, completion: nil)
@@ -228,8 +240,7 @@ class LoginViewController: UIViewController {
         
     }
     
-    
-    
+   
     
     
     
@@ -281,6 +292,9 @@ class LoginViewController: UIViewController {
                             UserDefaults.standard.set(email, forKey: "userEmail")
                             UserDefaults.standard.set("\(firstName) \(lastName)", forKey: "userName")
                             
+                            self?.isUserLoggedIn()
+                            
+
 
 
                             self?.dismiss(animated: true, completion: nil)
@@ -407,6 +421,8 @@ extension LoginViewController : UITextFieldDelegate, LoginButtonDelegate{
                     }
                     UserDefaults.standard.set(email, forKey: "userEmail")
                     UserDefaults.standard.set("\(firstName) \(lastName)", forKey: "userName")
+                    self?.isUserLoggedIn()
+
                     
 
 

@@ -8,34 +8,36 @@
 import Foundation
 import UIKit
 
+/// Makes  it easier to access View size attributes
 extension UIView {
     
     public var width : CGFloat {
-        return self.frame.width
+        return frame.width
     }
     
     public var height : CGFloat {
-        return self.frame.height
+        return frame.height
     }
     
     public var top : CGFloat {
-        return self.frame.origin.y
+        return frame.origin.y
     }
     
     public var bottom : CGFloat {
-        return self.frame.origin.y + height
+        return frame.origin.y + height
     }
     
     public var left : CGFloat {
-        return self.frame.origin.x
+        return frame.origin.x
     }
     
     public var right : CGFloat {
-        return self.frame.origin.x + width
+        return frame.origin.x + width
     }
     
 }
 
+/// Creates a placeholder with a background color
 extension UIImage {
   func withBackground(color: UIColor, opaque: Bool = true) -> UIImage {
     UIGraphicsBeginImageContextWithOptions(size, opaque, scale)
@@ -52,3 +54,4 @@ extension UIImage {
     return UIGraphicsGetImageFromCurrentImageContext() ?? self
   }
 }
+

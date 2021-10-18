@@ -18,6 +18,8 @@ struct AuthManager{
         
     }
     
+    
+    /// Standard email/password sign in
     func signIn(email: String, password: String, completion:@escaping ((Error?, AuthDataResult?))-> Void){
         
         Auth.auth().signIn(withEmail: email, password: password) { result, error in
@@ -39,18 +41,20 @@ struct AuthManager{
         
     }
     
+    /// Creates new user
     
-    func createUser(email: String, password: String, completion:@escaping (AuthDataResult)-> Void){
+    func createUser(email: String, password: String, completion:@escaping (Bool)-> Void){
         
         
         Auth.auth().createUser(withEmail: email, password: password) { result, error in
-                
-                guard let safeResult = result else{return}
-                
+                                
                 if error == nil{
-                    completion(safeResult)
+                    print("success creating user")
+
+                    completion(true)
                 }
-                else{print(error?.localizedDescription)}
+            else{ print(error?.localizedDescription)
+                    completion(false)}
                 
         }
 
@@ -58,8 +62,9 @@ struct AuthManager{
         
     }
     
-    
+    /// Sign out User
     func signOut(){
+        
         
         LoginManager().logOut()
         GIDSignIn.sharedInstance.signOut()

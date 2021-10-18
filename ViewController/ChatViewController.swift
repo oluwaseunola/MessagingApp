@@ -10,6 +10,7 @@ import MessageKit
 import InputBarAccessoryView
 import SDWebImage
 import CoreLocation
+import SDWebImage
 
 
 class ChatViewController: MessagesViewController, MessageCellDelegate {
@@ -82,7 +83,7 @@ class ChatViewController: MessagesViewController, MessageCellDelegate {
         
     }
     
-   
+    
     override func viewDidAppear(_ animated: Bool) {
         configureScroll()
         
@@ -111,10 +112,10 @@ class ChatViewController: MessagesViewController, MessageCellDelegate {
     }
     
     private func configureScroll(){
-        messagesCollectionView.scrollToLastItem(at: .bottom, animated: false)
+        messagesCollectionView.scrollToLastItem(at: .bottom, animated: true)
         messageInputBar.inputTextView.becomeFirstResponder()
         
-            }
+    }
     
     private func configureButtons(){
         let selectImageButton = InputBarButtonItem()
@@ -147,13 +148,13 @@ class ChatViewController: MessagesViewController, MessageCellDelegate {
             let vc = LocationPicker()
             let nav = UINavigationController(rootViewController: vc)
             vc.navigationItem.largeTitleDisplayMode = .never
-
+            
             self?.present(nav, animated: true, completion: nil)
+            
+            vc.completion = { location in
                 
-                vc.completion = { location in
-                    
-                    
-                    self?.sendLocationMessage(location: location)
+                
+                self?.sendLocationMessage(location: location)
                 
             }
             
@@ -167,7 +168,7 @@ class ChatViewController: MessagesViewController, MessageCellDelegate {
         present(actionSheet, animated: true, completion: nil)
         
     }
-
+    
     
     private func presentPhotoActionSheet(){
         
@@ -211,7 +212,7 @@ class ChatViewController: MessagesViewController, MessageCellDelegate {
         actionSheet.addAction(takeVideo)
         actionSheet.addAction(chooseFromLibrary)
         actionSheet.addAction(selectVideo)
-
+        
         actionSheet.addAction(cancel)
         
         present(actionSheet, animated: true, completion: nil)
@@ -251,7 +252,7 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
         
         
         
-
+        
         if isNewConvo {
             
             
@@ -270,10 +271,10 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
             }
             
         }else{
-
+            
             guard let id = convoID else{return}
-           
-
+            
+            
             DatabaseManager.shared.sendMessageToConvof(with: id, chattingWithEmail: chattingWithEmail, chattingWithName: chattingWithName, message: message) { success in
                 
                 if success{
@@ -287,6 +288,8 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
             
         }
         
+        inputBar.inputTextView.text = ""
+        
     }
     
     
@@ -294,7 +297,7 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
         
         switch message.kind{
             
-        
+            
         case .text(_):
             break
         case .attributedText(_):
@@ -334,10 +337,10 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
             break
         }
         
-
         
-            
-    
+        
+        
+        
         
         
     }
@@ -352,7 +355,7 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
         
         let message = Message(sender: safeSender , messageId: createMessageID(), sentDate: Date() , kind: .location(locationItem), isRead: false)
         
-    
+        
         
         if isNewConvo {
             
@@ -372,10 +375,10 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
             }
             
         }else{
-
+            
             guard let id = convoID else{return}
-           
-
+            
+            
             DatabaseManager.shared.sendMessageToConvof(with: id, chattingWithEmail: chattingWithEmail, chattingWithName: chattingWithName, message: message) { success in
                 
                 if success{
@@ -404,10 +407,10 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
         
     }
     
-   
+    
     
     func didTapImage(in cell: MessageCollectionViewCell) {
-       
+        
         guard let indexPath = messagesCollectionView.indexPath(for: cell) else{return}
         
         let message = messages[indexPath.section]
@@ -419,37 +422,37 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
             break
         case .attributedText(_):
             break
-
+            
         case .photo(let media):
             
             guard let url = media.url else{ print("no url here")
                 return}
             
             let vc = PhotoViewerViewController(url: url)
-        
+            
             present(vc, animated: true, completion: nil)
             
         case .video(_):
             break
-
+            
         case .location(_):
             break
-
+            
         case .emoji(_):
             break
-
+            
         case .audio(_):
             break
-
+            
         case .contact(_):
             break
-
+            
         case .linkPreview(_):
             break
-
+            
         case .custom(_):
             break
-
+            
         }
     }
     
@@ -459,10 +462,59 @@ extension ChatViewController : MessagesDataSource, MessagesLayoutDelegate, Messa
 
 extension ChatViewController : UIImagePickerControllerDelegate & UINavigationControllerDelegate{
     
+    func backgroundColor(for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) -> UIColor {
+        
+        if message.sender.senderId == self.sender?.senderId {
+            return UIColor(named: "me") ?? .systemBlue
+        }
+        
+        return UIColor(named: "them") ?? .systemGray
+        
+    }
+    
+    func configureAvatarView(_ avatarView: AvatarView, for message: MessageType, at indexPath: IndexPath, in messagesCollectionView: MessagesCollectionView) {
+        
+        if message.sender.senderId == self.sender?.senderId{
+            
+            
+            
+            StorageManager.shared.getProfileImage(userEmail: message.sender.senderId) { url in
+                
+                DispatchQueue.main.async {
+                    avatarView.sd_setImage(with: url) { _, _, _, _ in
+                        
+                    }
+                    
+                }
+                
+                
+            }
+            
+            
+        } else{
+            
+            StorageManager.shared.getProfileImage(userEmail: chattingWithEmail) { url in
+                
+                DispatchQueue.main.async {
+                    avatarView.sd_setImage(with: url) { _, _, _, _ in
+                        
+                    }
+                    
+                }
+                
+                
+            }
+            
+        }
+        
+        
+        
+    }
+    
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-       
+        
         dismiss(animated: true, completion: nil)
-
+        
         
         
         guard let userEmail = UserDefaults.standard.string(forKey: "userEmail") else {print("no email")
@@ -475,13 +527,13 @@ extension ChatViewController : UIImagePickerControllerDelegate & UINavigationCon
             return}
         
         let fileName = "imageMessage_\(createMessageID())"
-
+        
         
         if let image = info[.editedImage] as? UIImage {
             
             guard let imageData = image.pngData()else {print("no data")
                 return}
-
+            
             
             StorageManager.shared.uploadImageMessage(email: userEmail, photo: imageData, fileName: fileName ) {[weak self] result in
                 
@@ -507,7 +559,7 @@ extension ChatViewController : UIImagePickerControllerDelegate & UINavigationCon
                         
                     }
                     
-
+                    
                 case.failure(let error):
                     
                     print(error.localizedDescription)
@@ -519,7 +571,7 @@ extension ChatViewController : UIImagePickerControllerDelegate & UINavigationCon
             
             
         }else if let video = info[.mediaURL] as? URL{
-    
+            
             
             StorageManager.shared.uploadMediaURLMessage(email: userEmail, media: video, fileName: fileName ) {[weak self] result in
                 
@@ -545,7 +597,7 @@ extension ChatViewController : UIImagePickerControllerDelegate & UINavigationCon
                         
                     }
                     
-
+                    
                 case.failure(let error):
                     
                     print(error.localizedDescription)
@@ -556,12 +608,12 @@ extension ChatViewController : UIImagePickerControllerDelegate & UINavigationCon
             
             
         }
-    
-        
-
         
         
-
+        
+        
+        
+        
     }
     
 }
